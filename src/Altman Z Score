@@ -1,0 +1,51 @@
+import yfinance as yf
+
+# list of companies
+tickers = ['WMT', 'COST', 'HTZ', 'BBBY']
+
+for ticker in tickers:
+    stock = yf.Ticker(ticker)
+    bs = stock.balance_sheet  # BS
+    is_stmt = stock.income_stmt  # IS
+
+    # Check if there's empty data
+    if bs.empty or is_stmt.empty:
+        print(f"{ticker} missing data")
+        continue
+
+    # Extract key data
+    # Extract the lastest year's data
+    total_assets = bs.loc['Total Assets'].values[0]
+    total_liabilities = bs.loc['Total Liabilities Net Minority Interest'].values[0]
+    current_assets = bs.loc['Current Assets'].values[0]
+    current_liabilities = bs.loc['Current Liabilities'].values[0]
+    ebit = is_stmt.loc['EBIT'].values[0]
+    sales = is_stmt.loc['Total Revenue'].values[0]
+    retained_earnings = bs.loc['Retained Earnings'].values[0]
+
+    # Obtaining Market Cap
+    market_cap = stock.info.get('marketCap', 0)
+
+    # Calculate 5 factors of Altman Z-Score
+    # X1 = (current asset-current liabilities) / total asset
+    X1 = (current_assets - current_liabilities) / total_assets
+    # X2 = retained earnings / total assets
+    X2 = retained_earnings / total_assets
+    # X3 = EBIT / total assets
+    X3 = ebit / total_assets
+    # X4 = market cap / total liabilities
+    X4 = market_cap / total_liabilities
+    # X5 = volume of sales / total asset
+    X5 = sales / total_assets
+
+    # Calculate Z-Score
+    # Z = 1.2*X1 + 1.4*X2 + 3.3*X3 + 0.6*X4 + 1.0*X5
+    z_score = 1.2 * X1 + 1.4 * X2 + 3.3 * X3 + 0.6 * X4 + 1.0 * X5
+
+    print(f"{ticker} Z-Score: {z_score:.2f}")
+    if z_score < 1.81:
+        print("  -> category: High risk")
+    elif z_score > 2.99:
+        print("  -> category: Safe zone")
+    else:
+        print("  -> category: Grey area")
